@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחולל אווטאר - DevFest Rehovot</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Google Sans', sans-serif;
+            background-color: #f1f3f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #202124;
+        }
+
+        h1 { color: #ea4335; margin-bottom: 10px; }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"] { display: none; }
+
+        .btn {
+            background-color: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 500;
+            border: none;
+            transition: 0.2s;
+            font-size: 16px;
+        }
+
+        .btn:hover { box-shadow: 0 2px 5px rgba(0,0,0,0.2); transform: translateY(-1px); }
+        .btn-secondary { background-color: #fff; color: #4285f4; border: 1px solid #dadce0; }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-top: 20px;
+        }
+
+        .preview-text { color: #5f6368; margin-bottom: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>DevFest Avatar Creator</h1>
+        <p>צור תמונת פרופיל לכנס Code For Resilience Summit</p>
+        
+        <div class="controls">
+            <label class="btn">
+                בחר תמונה
+                <input type="file" id="uploadInput" accept="image/*">
+            </label>
+            <button class="btn btn-secondary" id="downloadBtn" style="display: none;">הורד תמונה</button>
+        </div>
+
+        <p class="preview-text">התצוגה המקדימה תופיע כאן:</p>
+        <canvas id="avatarCanvas" width="1000" height="1000"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('avatarCanvas');
+        const ctx = canvas.getContext('2d');
+        const uploadInput = document.getElementById('uploadInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        const config = {
+            // overlayColor הוסר - אין יותר רקע סגול
+            textColor: '#000000',
+            font: 'Google Sans, sans-serif',
+            badge2025Color: '#bfeaf5'
+        };
+
+        drawPlaceholder();
+
+        uploadInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    drawAvatar(img);
+                    downloadBtn.style.display = 'inline-block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        downloadBtn.addEventListener('click', function() {
+            const link = document.createElement('a');
+            link.download = 'devfest-avatar.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        function drawPlaceholder() {
+            ctx.fillStyle = '#eee';
+            ctx.beginPath(); ctx.arc(500, 500, 500, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#aaa'; ctx.font = '50px ' + config.font; ctx.textAlign = 'center';
+            ctx.fillText('העלה תמונה כאן', 500, 500);
+        }
+
+        function drawAvatar(userImg) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. תמונה + עיגול (ללא הפילטר הסגול)
+            ctx.save();
+            ctx.beginPath(); ctx.arc(500, 500, 500, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+            const scale = Math.max(canvas.width / userImg.width, canvas.height / userImg.height);
+            const x = (canvas.width / 2) - (userImg.width / 2) * scale;
+            const y = (canvas.height / 2) - (userImg.height / 2) * scale;
+            ctx.drawImage(userImg, x, y, userImg.width * scale, userImg.height * scale);
+            // שורה זו נמחקה: ctx.fillStyle = config.overlayColor; ...
+            ctx.restore();
+
+            // 2. לוגו עליון DevFest
+            drawPill(500, 150, 420, 120, '#ffffff'); 
+            ctx.fillStyle = '#000'; ctx.font = 'bold 80px ' + config.font;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('DevFest', 540, 155);
+            ctx.fillStyle = '#4285f4';
+            ctx.beginPath(); ctx.arc(270, 120, 25, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(270, 180, 25, 0, Math.PI*2); ctx.fill();
+
+            // 3. כותרת משנה (עם קו מתאר לבן לקריאות)
+            ctx.font = 'bold 40px ' + config.font;
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = 'white'; 
+            ctx.lineWidth = 6;
+            ctx.strokeText('Code For Resilience Summit', 500, 250); // קו לבן
+            ctx.fillStyle = '#000'; 
+            ctx.fillText('Code For Resilience Summit', 500, 250); // טקסט שחור
+
+            // 4. תגית 2025
+            drawPill(350, 850, 200, 100, config.badge2025Color);
+            ctx.fillStyle = '#000'; ctx.font = '50px ' + config.font;
+            ctx.fillText('2025', 350, 855);
+
+            // 5. הלוגו המדויק (Brackets)
+            drawExactGDGLogo(680, 850, 1.2);
+
+            // 6. טקסט תחתון GDG Rehovot (עם קו מתאר לבן לקריאות)
+            ctx.font = 'bold 45px ' + config.font;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6;
+            ctx.strokeText('GDG Rehovot', 500, 950); // קו לבן
+            ctx.fillStyle = '#000';
+            ctx.fillText('GDG Rehovot', 500, 950); // טקסט שחור
+        }
+
+        function drawPill(x, y, w, h, color) {
+            ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x - w/2, y - h/2, w, h, 50); ctx.fill();
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.stroke();
+        }
+
+        function drawExactGDGLogo(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+
+            const lineWidth = 35;
+            const borderSize = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            function drawLine(x1, y1, x2, y2, color, isBorder) {
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.lineWidth = isBorder ? lineWidth + borderSize * 2 : lineWidth;
+                ctx.strokeStyle = isBorder ? '#000000' : color;
+                ctx.stroke();
+            }
+
+            const leftTop = {x: -50, y: -30};
+            const leftMid = {x: -80, y: 0};
+            const leftBot = {x: -50, y: 30};
+            const rightTop = {x: 50, y: -30};
+            const rightMid = {x: 80, y: 0};
+            const rightBot = {x: 50, y: 30};
+
+            // גבולות שחורים
+            drawLine(leftTop.x, leftTop.y, leftMid.x, leftMid.y, null, true);
+            drawLine(leftMid.x, leftMid.y, leftBot.x, leftBot.y, null, true);
+            drawLine(rightTop.x, rightTop.y, rightMid.x, rightMid.y, null, true);
+            drawLine(rightMid.x, rightMid.y, rightBot.x, rightBot.y, null, true);
+
+            // צבעים
+            drawLine(leftMid.x, leftMid.y, leftBot.x, leftBot.y, '#4285F4', false); // כחול
+            
+            ctx.beginPath(); // אדום (מעל החיבור)
+            ctx.moveTo(leftTop.x, leftTop.y);
+            ctx.lineTo(leftMid.x, leftMid.y);
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = '#EA4335';
+            ctx.stroke();
+
+            drawLine(rightTop.x, rightTop.y, rightMid.x, rightMid.y, '#34A853', false); // ירוק
+            
+            ctx.beginPath(); // צהוב
+            ctx.moveTo(rightMid.x, rightMid.y);
+            ctx.lineTo(rightBot.x, rightBot.y);
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = '#FBBC04';
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
